@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:smart_budget_app/dataBase_local/db.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:intl/intl.dart';
 
 class Movimientos extends StatefulWidget {
   @override
@@ -59,6 +60,27 @@ class _MovimientosState extends State<Movimientos> {
     });
   }
 
+  List<String> _categorias_gasto = [
+  "Alimentación", "Vivienda", "Transporte", "Salud", "Entretenimiento", 
+  "Educación", "Servicios", "Otros"
+];
+  
+
+String? _categoriaSeleccionadaGasto;
+
+// Categorías para Ingresos
+  List<String> _categorias_ingreso = [
+    "Sueldo", "Freelance", "Ingresos pasivos", "Regalos", "Otros"
+  ];
+
+// Variable para guardar la categoría seleccionada
+  String? _categoriaSeleccionadaIngreso;
+
+// Función para formatear la fecha en "AAAA/MM/DD HH:mm"
+String formatFecha(DateTime fecha) {
+  final DateFormat formatter = DateFormat('yyyy/MM/dd HH:mm');
+  return formatter.format(fecha);
+}
   Future<void> _addMovimiento(String type, String descripcion, double cantidad, String categoria) async {
   if (_database == null) return;
 
@@ -133,63 +155,97 @@ class _MovimientosState extends State<Movimientos> {
 
     await _loadMovimientos();
   }
+Widget _buildMovimientoItem(Map<String, dynamic> movimiento) {
+  final tipo = movimiento['tipo'];
+  final descripcion = movimiento['descripcion'];
+  final cantidad = movimiento['cantidad'];
+  final id = movimiento['id'];
+  final categoria = movimiento['categoria'];
 
-  Widget _buildMovimientoItem(Map<String, dynamic> movimiento) {
-    final tipo = movimiento['tipo'];
-    final descripcion = movimiento['descripcion'];
-    final cantidad = movimiento['cantidad'];
-    final id = movimiento['id'];
-    final categoria = movimiento['categoria'];
-
-    return ListTile(
-      title: Text(tipo, style: TextStyle(color: Colors.white)),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(descripcion, style: TextStyle(color: Colors.white70)),
-          SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '\$${cantidad.toStringAsFixed(2)}',
-                style: TextStyle(
-                  color: tipo == 'Gasto' ? Color(0xFFF2003D) : Color(0xFF27D0C6),
-                ),
-              ),
-              Row(
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      openEditDialog(id, tipo, descripcion, cantidad, categoria);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF27D0C6), 
-                      shape: CircleBorder(), 
-                      minimumSize: Size(36, 36), 
-                    ),
-                    child: Icon(Icons.edit, color: Colors.white, size: 18), 
-                  ),
-                  SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () {
-                      _deleteMovimiento(id, tipo);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFFF2003D),
-                      shape: CircleBorder(),
-                      minimumSize: Size(36, 36),
-                    ),
-                    child: Icon(Icons.delete, color: Colors.white, size: 18),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+  // Convertir la fecha si es una cadena
+  DateTime fechaMovimiento;
+  if (movimiento['fecha'] is String) {
+    fechaMovimiento = DateTime.parse(movimiento['fecha']);
+  } else {
+    fechaMovimiento = movimiento['fecha'];
   }
+
+  // Formatear la fecha usando formatFecha
+  String fechaFormateada = formatFecha(fechaMovimiento);
+
+  return Container(
+    padding: const EdgeInsets.all(16.0),
+    margin: const EdgeInsets.symmetric(vertical: 8.0),
+    decoration: BoxDecoration(
+      color: Color(0xFF2A2C7F), // Color de fondo
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: ListTile(
+    title: Text(
+      tipo,
+      style: TextStyle(color: Colors.white),
+    ),
+    subtitle: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: 4),
+        Text(
+          "Categoría: $categoria",
+          style: TextStyle(color: Colors.white70, fontSize: 14),
+        ),
+        Text(
+          "Descripción: $descripcion",
+          style: TextStyle(color: Colors.white70),
+        ),
+        SizedBox(height: 4),
+        Text(
+          "Fecha: $fechaFormateada", // Mostrar la fecha formateada
+          style: TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+        SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '\$${cantidad.toStringAsFixed(2)}',
+              style: TextStyle(
+                color: tipo == 'Gasto' ? Color(0xFFF2003D) : Color(0xFF27D0C6),
+              ),
+            ),
+            Row(
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    openEditDialog(id, tipo, descripcion, cantidad, categoria);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF27D0C6), 
+                    shape: CircleBorder(), 
+                    minimumSize: Size(36, 36), 
+                  ),
+                  child: Icon(Icons.edit, color: Colors.white, size: 18), 
+                ),
+                SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    _deleteMovimiento(id, tipo);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFFF2003D),
+                    shape: CircleBorder(),
+                    minimumSize: Size(36, 36),
+                  ),
+                  child: Icon(Icons.delete, color: Colors.white, size: 18),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    ),
+  )
+  );
+}
 
   Widget _buildEmptyMessage() {
     return Center(
@@ -267,135 +323,176 @@ class _MovimientosState extends State<Movimientos> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                title: Text("Gasto"),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  openCreateDialog("Gasto");
-                },
-              ),
-              ListTile(
                 title: Text("Ingreso"),
                 onTap: () {
                   Navigator.of(context).pop();
                   openCreateDialog("Ingreso");
                 },
               ),
+              ListTile(
+                title: Text("Gasto"),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  openCreateDialog("Gasto");
+                },
+              ),
+              
             ],
           ),
         ),
       );
 
-  Future openCreateDialog(String type) => showDialog(
-        context: context,
-        builder: (context) {
-          final _descripcionController = TextEditingController();
-          final _cantidadController = TextEditingController();
-          final _categoriaController = TextEditingController();
+Future openCreateDialog(String type) => showDialog(
+  context: context,
+  builder: (context) {
+    final _descripcionController = TextEditingController();
+    final _cantidadController = TextEditingController();
 
-          return AlertDialog(
-            title: Text("Crear $type"),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: _descripcionController,
-                  decoration: InputDecoration(
-                    hintText: "Ingrese la descripción del movimiento",
-                  ),
-                ),
-                SizedBox(height: 8),
-                TextField(
-                  controller: _cantidadController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    hintText: "Ingrese el valor del movimiento",
-                  ),
-                ),
-                SizedBox(height: 8),
-                TextField(
-                  controller: _categoriaController,
-                  decoration: InputDecoration(
-                    hintText: "Ingrese la categoría del movimiento",
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
+    // Variable local para almacenar la categoría seleccionada
+    String? _categoriaSeleccionada = type == "Ingreso" ? _categoriaSeleccionadaIngreso : _categoriaSeleccionadaGasto;
+
+    // Lista de categorías según el tipo
+    List<String> categorias = type == "Ingreso" ? _categorias_ingreso : _categorias_gasto;
+
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return AlertDialog(
+          title: Text("Crear $type"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(height: 8),
+              DropdownButton<String>(
+                value: _categoriaSeleccionada,
+                hint: Text("Seleccione una categoría"),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _categoriaSeleccionada = newValue;
+                    if (type == "Ingreso") {
+                      _categoriaSeleccionadaIngreso = newValue;
+                    } else {
+                      _categoriaSeleccionadaGasto = newValue;
+                    }
+                  });
                 },
-                child: Text("Cancelar"),
+                items: categorias.map<DropdownMenuItem<String>>((String categoria) {
+                  return DropdownMenuItem<String>(
+                    value: categoria,
+                    child: Text(categoria),
+                  );
+                }).toList(),
               ),
-              TextButton(
-                onPressed: () {
-                  final descripcion = _descripcionController.text;
-                  final cantidad = double.parse(_cantidadController.text);
-                  final categoria = _categoriaController.text;
-                  _addMovimiento(type, descripcion, cantidad, categoria);
-                  Navigator.of(context).pop();
-                },
-                child: Text("Guardar"),
+              SizedBox(height: 8),
+              TextField(
+                controller: _cantidadController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: "Ingrese el valor del movimiento",
+                ),
+              ),
+              TextField(
+                controller: _descripcionController,
+                decoration: InputDecoration(
+                  hintText: "Ingrese la descripción del movimiento",
+                ),
               ),
             ],
-          );
-        },
-      );
-
-  Future openEditDialog(int id, String type, String descripcion, double cantidad, String categoria) => showDialog(
-        context: context,
-        builder: (context) {
-          final _descripcionController = TextEditingController(text: descripcion);
-          final _cantidadController = TextEditingController(text: cantidad.toString());
-          final _categoriaController = TextEditingController(text: categoria);
-
-          return AlertDialog(
-            title: Text("Editar $type"),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: _descripcionController,
-                  decoration: InputDecoration(
-                    hintText: "Ingrese la descripción del movimiento",
-                  ),
-                ),
-                SizedBox(height: 8),
-                TextField(
-                  controller: _cantidadController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    hintText: "Ingrese el valor del movimiento",
-                  ),
-                ),
-                SizedBox(height: 8),
-                TextField(
-                  controller: _categoriaController,
-                  decoration: InputDecoration(
-                    hintText: "Ingrese la categoría del movimiento",
-                  ),
-                ),
-              ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text("Cancelar"),
             ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
+            TextButton(
+              onPressed: () {
+                final descripcion = _descripcionController.text;
+                final cantidad = double.parse(_cantidadController.text);
+                final categoria = _categoriaSeleccionada ?? "";
+                _addMovimiento(type, descripcion, cantidad, categoria);
+                Navigator.of(context).pop();
+              },
+              child: Text("Guardar"),
+            ),
+          ],
+        );
+      },
+    );
+  },
+);
+Future openEditDialog(int id, String type, String descripcion, double cantidad, String categoria) => showDialog(
+  context: context,
+  builder: (context) {
+    final _descripcionController = TextEditingController(text: descripcion);
+    final _cantidadController = TextEditingController(text: cantidad.toString());
+
+    // Variable local para almacenar la categoría seleccionada
+    String? _categoriaSeleccionada = categoria;
+
+    // Lista de categorías según el tipo
+    List<String> categorias = type == "Ingreso" ? _categorias_ingreso : _categorias_gasto;
+
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return AlertDialog(
+          title: Text("Editar $type"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButton<String>(
+                value: _categoriaSeleccionada,
+                hint: Text("Seleccione una categoría"),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _categoriaSeleccionada = newValue;
+                  });
                 },
-                child: Text("Cancelar"),
+                items: categorias.map<DropdownMenuItem<String>>((String categoria) {
+                  return DropdownMenuItem<String>(
+                    value: categoria,
+                    child: Text(categoria),
+                  );
+                }).toList(),
               ),
-              TextButton(
-                onPressed: () {
-                  final descripcion = _descripcionController.text;
-                  final cantidad = double.parse(_cantidadController.text);
-                  final categoria = _categoriaController.text;
-                  _editMovimiento(id, type, descripcion, cantidad, categoria);
-                  Navigator.of(context).pop();
-                },
-                child: Text("Guardar"),
+              TextField(
+                controller: _descripcionController,
+                decoration: InputDecoration(
+                  hintText: "Ingrese la descripción del movimiento",
+                ),
+              ),
+              SizedBox(height: 8),
+              TextField(
+                controller: _cantidadController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: "Ingrese el valor del movimiento",
+                ),
               ),
             ],
-          );
-        },
-      );
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text("Cancelar"),
+            ),
+            TextButton(
+              onPressed: () {
+                final descripcion = _descripcionController.text;
+                final cantidad = double.parse(_cantidadController.text);
+                final categoria = _categoriaSeleccionada ?? "";
+                _editMovimiento(id, type, descripcion, cantidad, categoria);
+                Navigator.of(context).pop();
+              },
+              child: Text("Guardar"),
+            ),
+          ],                
+        );
+      },
+    );
+  },
+);
+
 }
